@@ -1,5 +1,6 @@
 /* ----------------------------------------------------------------------------
- * Copyright &copy; 2015 Ben Blazak <bblazak@fullerton.edu>
+ * Copyright &copy;     2015 Ben Blazak <bblazak@fullerton.edu>
+ *                      2015 Alex Liao  <ycl@csu.fullerton.edu>
  * Released under the [MIT License] (http://opensource.org/licenses/MIT)
  * ------------------------------------------------------------------------- */
 
@@ -8,200 +9,186 @@
  * two files, one for primes, another for composites.
  */
 
-
 #include <iostream>
-using std::cin;
+#include <algorithm>
+#include <string>
+#include <fstream>
+
 using std::cout;
 using std::endl;
-
-#include <string>
+using std::fill_n;
 using std::string;
-
-#include <fstream>
 using std::ifstream;
 using std::ofstream;
 
-/**
- * Find the maximum unsigned integer in `infilename`.
- *
- * Arguments:
- * - `infilename`: A string representing the file path to open.
- *     - Note: Since the string will not be changed, we declare it `const`.
- *       Since strings are objects (and therefore larger than fundamental
- *       types), we avoid copying it by passing it by reference.
- *
- * Returns:
- * - The maximum integer, or `-1` on error.
- *     - Note: It would be better style in C++ to throw an exception, but we
- *       haven't learned about those yet.
- */
-int find_max(const string& infilename);
+const string input_file = "/Users/Ayl/Downloads/gitFiles/assignment-02/input.txt",
+output_p   = "/Users/Ayl/Downloads/gitFiles/assignment-02/Outputs/primes.txt",
+output_c   = "/Users/Ayl/Downloads/gitFiles/assignment-02/Outputs/composites.txt";
 
-/**
- * Mark all prime indices in `primes` as `true` and all others as `false` using
- * the Sieve of Eratosthenes algorithm.
- *
- * Arguments:
- * - `size`: The size of (the number of elements in) the array.
- * - `primes`: An array of boolean values.
- *
- * Notes:
- * - The number `2` is the smallest prime.
- * - When arrays are passed to functions, they decay into pointers (even though
- *   arrays and pointers are not the same thing).  Thus what this function is
- *   actually receiving is a pointer to the first element of the array `primes`
- *   in `main()` (it doesn't make much difference for how we're using it in
- *   this function, but the distinction is important).  This pointer is passed
- *   by value, but the data inside the array is not passed at all: we access it
- *   through the pointer.
- * - It might be better to return the array from the function rather than pass
- *   the array and modify it, but the syntax is relatively uncommon, and might
- *   be confusing.
- */
-void sieve(const int size, bool primes[]);
+ifstream readFile (input_file);
+ofstream write_prim (output_p);
+ofstream write_comp (output_c);
 
-/**
- * Read numbers from `infilename`, and if they are prime, output them to
- * `outfilename`, separated by newlines.
- *
- * Arguments:
- * - `size`: The size of (the number of elements in) the array.
- * - `primes`: An array of boolean values, with each element set to `true` if
- *   its index is prime, and `false` otherwise.
- * - `infilename`: A string representing the file path to read from.
- * - `outfilename`: A string representing the file path to write to.
- *
- * Returns:
- * - 0 on success, or -1 on error.
- */
-int write_primes( const int size,
-                  bool primes[],
-                  const string& infilename,
-                  const string& outfilename );
+int find_max (const string & = input_file);
 
-/**
- * Read numbers from `infilename`, and if they are composite, output them to
- * `outfilename`, separated by newlines.
- *
- * Arguments:
- * - `size`: The size of (the number of elements in) the array.
- * - `primes`: An array of boolean values, with each element set to `true` if
- *   its index is prime, and `false` otherwise.
- * - `infilename`: A string representing the file path to read from.
- * - `outfilename`: A string representing the file path to write to.
- *
- * Returns:
- * - 0 on success, or -1 on error.
- */
-int write_composites( const int size,
-                      bool primes[],
-                      const string& infilename,
-                      const string& outfilename );
+void sieve (const int, bool []);
 
-// ----------------------------------------------------------------------------
+int write_p (const int,
+             bool [],
+             const string & = input_file,
+             const string & = output_p);
 
-int main() {
-    int max = find_max("input.txt");
-    if (max == -1) {
-        cout << "ERROR in `find_max()`" << endl;
-        return 1;  // error
+int write_c (const int,
+             bool [],
+             const string & = input_file,
+             const string & = output_c);
+
+int main()
+{
+    int max = find_max();
+    
+    if (max == -1)
+    {
+        cout << "Error finding max! \n";
+        return 1; // error msg
     }
-
-    // - Runtime sized arrays are a C99 feature, and a GCC and Clang extension.
-    //   Thus `bool primes[max+1];` is not standards compliant.  It should work
-    //   on Xcode (which uses Clang) and in Linux (where most people use either
-    //   GCC or Clang), but Visual Studio appears not to allow it.
-    bool * primes = (bool *) malloc( sizeof(bool) * (max+1) );
-    sieve(max+1, primes);
-
-    int ret;  // for storing return values, to check for error codes
-    //
-    ret = write_primes(max+1, primes, "input.txt", "primes.txt");
-    if (ret == -1) {
-        cout << "ERROR in `write_primes()`" << endl;
-        return 1;  // error
+    else
+    {
+        cout << "Max is > " << max << endl;
     }
-    //
-    ret = write_composites(max+1, primes, "input.txt", "composites.txt");
-    if (ret == -1) {
-        cout << "ERROR in `write_composites()`" << endl;
-        return 1;  // error
-    }
-
-    return 0;  // success
+    
+    bool * test_data = new bool[max];
+    
+    sieve(max, test_data);
+    
+    write_p(max, test_data);
+    
+    write_c(max, test_data);
+    
+    return 0;
 }
 
-// ----------------------------------------------------------------------------
-
-int find_max(const string& infilename) {
-    ifstream infile(infilename);
-    if (!infile.is_open())
-        return -1;  // error
-
-    int max = -1;
-
-    int n;
-    for (infile >> n; infile.good(); infile >> n) {
-        if (n > max)
-            max = n;
+int find_max (const string &input)
+{
+    int current_num, max = 0;
+    
+    if (readFile.fail())
+    {
+        return -1; // error reading file
     }
-
+    else
+    {
+        while (readFile >> current_num)
+        {
+            if (current_num > max)
+            {
+                max = current_num;
+            }
+        }
+    }
+    
+    //readFile.close();
+    
     return max;
 }
 
-void sieve(const int size, bool primes[]) {
-    // set all entries to `true`
-    for (int a = 0; a < size; a++) {
-        primes[a] = true;
+void sieve (const int test_size, bool test_data[])
+{
+    fill_n(test_data, test_size, true);     //  fill entire array to `true`
+    
+    test_data[0] = false;   //  set indices [0], [1] as `false`
+    test_data[1] = false;
+    
+    //  iterate through the indeces in the array test_data,
+    //  if an index is marked as `true`, mark all multiples of the index as `false`
+    
+    for (int p = 2; p < test_size; p++)
+    {
+        if (test_data[p])   //  if the index is true, execute. . . for loop
+        {
+            for (int m_of_p = 2; m_of_p < test_size; m_of_p++)
+            {
+                int multiple = p * m_of_p;
+                if (multiple > test_size)
+                {
+                    break;  //  if multiple of the true index is greater than max
+                }
+                else
+                {
+                    test_data[multiple] = false;
+                }
+            }
+        }
     }
+}
 
-    // mark special cases `0` and `1` as `false`
-    primes[0] = false;
-    primes[1] = false;
-
-    // for the rest of the numbers, iterating from low indices to high, if a
-    // number is marked as `true`, mark all multiples of it as `false`
-    // - note that in the outer loop we could stop at `sqrt(size)`
-    for (int a = 2; a < size; a++) {
-        if (primes[a] == true)
-            for (int b = a+a; b < size; b += a)
-                primes[b] = false;
+int write_p (const int    test_size,
+             bool         test_data[],
+             const string &input,
+             const string &output)
+{
+    readFile.clear();
+    readFile.seekg(std::ios_base::beg);
+    
+    int current_num;
+    
+    if (readFile.fail() || write_prim.fail())
+    {
+        cout << "Error in read/ write primes\n";
+        return -1;  //  File read/ write error
     }
+    else
+    {
+        while (readFile >> current_num)
+        {
+            if (test_data[current_num] == true)
+            {
+                write_prim << current_num << endl;
+            }
+        }
+    }
+    
+    //readFile.close();
+    write_prim.close();
+    
+    return 0;   //  function execute success
 }
 
-int write_primes( const int size,
-                  bool primes[],
-                  const string& infilename,
-                  const string& outfilename ) {
-
-    ifstream infile(infilename);
-    ofstream outfile(outfilename);
-    if ( !infile.is_open() || !outfile.is_open() )
-        return -1;  // error
-
-    int n;
-    for (infile >> n; infile.good(); infile >> n)
-        if (primes[n] == true)
-            outfile << n << endl;
-
-    return 0;  // success
+int write_c (const int    test_size,
+             bool         test_data[],
+             const string &input,
+             const string &output)
+{
+    readFile.clear();
+    readFile.seekg(std::ios_base::beg);
+    
+    int current_num;
+    
+    if (readFile.fail() || write_comp.fail())
+    {
+        cout << "Error in read/ write composites \n";
+        return -1;  //  File read/ write error
+    }
+    else
+    {
+        while (readFile >> current_num)
+        {
+            if (test_data[current_num] == false)
+            {
+                if (current_num == 0 || current_num == 1)
+                {
+                    continue;
+                }
+                
+                write_comp << current_num << endl;
+            }
+        }
+    }
+    
+    readFile.close();
+    write_comp.close();
+    
+    return 0;   //  Function execute success
 }
 
-int write_composites( const int size,
-                      bool primes[],
-                      const string& infilename,
-                      const string& outfilename ) {
-
-    ifstream infile(infilename);
-    ofstream outfile(outfilename);
-    if ( !infile.is_open() || !outfile.is_open() )
-        return -1;  // error
-
-    int n;
-    for (infile >> n; infile.good(); infile >> n)
-        if (primes[n] == false)
-            outfile << n << endl;
-
-    return 0;  // success
-}
 
